@@ -11,6 +11,9 @@ import com.facebook.react.bridge.ReadableMap;
 import com.zopim.android.sdk.api.ZopimChat;
 import com.zopim.android.sdk.prechat.ZopimChatActivity;
 import com.zopim.android.sdk.model.VisitorInfo;
+import com.zopim.android.sdk.api.ZopimChat;
+import com.zopim.android.sdk.prechat.PreChatForm;
+import com.zopim.android.sdk.prechat.ZopimChatActivity;
 
 public class RNZendeskChatModule extends ReactContextBaseJavaModule {
 
@@ -35,9 +38,37 @@ public class RNZendeskChatModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void startChat(ReadableMap config) {
-    // ignore config at this moment
+  public void startChat(ReadableMap configMap) throws Exception {
     ReactApplicationContext context = getReactApplicationContext();
-    context.startActivity(new Intent(context, ZopimChatActivity.class));
+    if (configMap.hasKey("preChatForm")) {
+      ReadableMap form = configMap.getMap("preChatForm");
+      PreChatForm preChatForm = new PreChatForm.Builder()
+        .name(mapStringToPreChatFormFieldOption(form.hasKey("name") ? form.getString("name") : null))
+        .email(mapStringToPreChatFormFieldOption(form.hasKey("email") ? form.getString("email") : null))
+        .phoneNumber(mapStringToPreChatFormFieldOption(form.hasKey("phone") ? form.getString("phone") : null))
+        .department(mapStringToPreChatFormFieldOption(form.hasKey("department") ? form.getString("department") : null))
+        .message(mapStringToPreChatFormFieldOption(form.hasKey("message") ? form.getString("message") : null))
+        .build();
+      ZopimChat.SessionConfig config = new ZopimChat.SessionConfig()
+              .preChatForm(preChatForm);
+
+      ZopimChatActivity.startActivity(context, config);
+    } else {
+      context.startActivity(new Intent(context, ZopimChatActivity.class));
+    }
+  }
+
+  private PreChatForm.Field mapStringToPreChatFormFieldOption(String str) throws Exception {
+    if (str == null) {
+      return PreChatForm.Field.NOT_REQUIRED;
+    }
+    if (str.contentEquals("required")) {
+      return PreChatForm.Field.REQUIRED_EDITABLE;
+    }
+    if (str.contentEquals("optional")) {
+      return PreChatForm.Field.OPTIONAL_EDITABLE;
+    }
+
+    throw new Exception("Got unknown prechat form option");
   }
 }
